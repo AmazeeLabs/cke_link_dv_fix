@@ -1,0 +1,6 @@
+name = Fix for ckeditor_link+domain_variants+entitycache combination.
+core = 7.x
+
+dependencies[] = ckeditor_link
+dependencies[] = entitycache
+dependencies[] = domain_variants

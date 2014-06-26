@@ -1,0 +1,58 @@
+<?php
+
+/**
+ * @file
+ *
+ * The module fixes the result of ckeditor_link + domain_variants + entitycache
+ * combination: when entity is cached with links having domain variant prefix.
+ */
+
+/**
+ * Implements hook_filter_info_alter().
+ */
+function cke_link_dv_fix_filter_info_alter(&$info) {
+  $info['ckeditor_link_filter']['process callback'] = 'cke_link_dv_fix_ckeditor_link_filter_process';
+}
+
+/**
+ * A replacements for the ckeditor_link_filter_process().
+ *
+ * It behaves like the original function, but replaces the replace callback with
+ * ours.
+ *
+ * @see ckeditor_link_filter_process()
+ */
+function cke_link_dv_fix_ckeditor_link_filter_process($text, $filter, $format, $langcode, $cache, $cache_id) {
+  module_load_include('inc', 'cke_link_dv_fix');
+  _cke_link_dv_fix_ckeditor_link_filter_process(NULL, $langcode);
+  return preg_replace_callback('`\bhref="'. preg_quote(base_path(), '`') .'([^?#"]+)`', '_cke_link_dv_fix_ckeditor_link_filter_process', $text);
+}
+
+/**
+ * Implements hook_entitycache_load().
+ */
+function cke_link_dv_fix_entitycache_load(&$entities, $entity_type) {
+
+  // Ensure that we have a domain variant to replace with.
+  if (!empty($GLOBALS['_domain_variant']->path)) {
+
+    // Process only nodes by default.
+    if (variable_get('cke_link_dv_fix_process_all_entity_types') || ($entity_type == 'node')) {
+      module_load_include('inc', 'cke_link_dv_fix');
+      foreach ($entities as &$entity) {
+        $fields =& _cke_link_dv_fix_find_filtered_text_fields($entity);
+        foreach ($fields as &$field) {
+          $filter = filter_list_format($field['format']);
+          if (!empty($filter['ckeditor_link_filter']->status)) {
+            if (isset($field['safe_value'])) {
+              _cke_link_dv_fix_correct_domain_variants($field['safe_value']);
+            }
+            if (isset($field['safe_summary'])) {
+              _cke_link_dv_fix_correct_domain_variants($field['safe_summary']);
+            }
+          }
+        }
+      }
+    }
+  }
+}
