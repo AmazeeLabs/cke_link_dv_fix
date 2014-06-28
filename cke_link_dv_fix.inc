@@ -35,7 +35,7 @@ function _cke_link_dv_fix_ckeditor_link_filter_process($matches, $langcode = NUL
  * @param string $text
  */
 function _cke_link_dv_fix_correct_domain_variants(&$text) {
-  //AXXX fast
+  // Use strpos() to avoid excessive regex calls.
   if (strpos($text, 'setcurrentdomainvariant="true" href="') !== FALSE) {
     $text = preg_replace_callback('`setcurrentdomainvariant="true" href="([^?#"]+)`', '_cke_link_dv_fix_correct_domain_variants_callback', $text);
   }
@@ -69,9 +69,10 @@ function _cke_link_dv_fix_correct_domain_variants_callback($matches) {
 }
 
 /**
- * Recursively searches an entity for the formatted text fields.
+ * Searches an entity for the formatted text fields.
  *
- * @param object|array $entity
+ * @param object $entity
+ * @param string $entity_type
  *
  * @return array
  *   An indexed array containing formatted text field values, example:
@@ -83,22 +84,48 @@ function _cke_link_dv_fix_correct_domain_variants_callback($matches) {
  *   @endcode
  *   The values are references.
  */
-function &_cke_link_dv_fix_find_filtered_text_fields(&$entity) {
+function &_cke_link_dv_fix_find_filtered_text_fields(&$entity, $entity_type) {
   $return = array();
-  foreach ($entity as &$property) {
-    if (is_array($property)) {
-      if (isset($property['value']) && array_key_exists('format', $property) && isset($property['value'])) {
-        if ($property['format'] !== NULL) {
-          $return[] =& $property;
+  list( , , $bundle) = entity_extract_ids($entity_type, $entity);
+  $filtered_text_fields = _cke_link_dv_fix_filtered_text_field_list($entity_type, $bundle);
+  foreach ($entity as $field_name => $_) {
+    if (isset($filtered_text_fields[$field_name]) && !empty($entity->{$field_name})) {
+      // Process only for current language.
+      $language = field_language($entity_type, $entity, $field_name);
+      if (!empty($entity->{$field_name}[$language])) {
+        foreach ($entity->{$field_name}[$language] as $delta => $__) {
+          $return[] =& $entity->{$field_name}[$language][$delta];
         }
       }
-      else {
-        $return = array_merge(_cke_link_dv_fix_find_filtered_text_fields($property), $return);
-      }
-    }
-    elseif (is_object($property)) {
-      $return = array_merge(_cke_link_dv_fix_find_filtered_text_fields($property), $return);
     }
   }
   return $return;
+}
+
+/**
+ * Returns an array of field names with text processing enabled.
+ *
+ * @param string $entity_type
+ * @param string $bundle
+ *
+ * @return array
+ */
+function _cke_link_dv_fix_filtered_text_field_list($entity_type, $bundle) {
+  static $cache;
+  if ($cache == NULL) {
+    $cache = field_info_instances();
+    foreach ($cache as $_entity_type => $bundles) {
+      foreach ($bundles as $_bundle => $instances) {
+        foreach ($instances as $field_name => $instance) {
+          if (empty($instance['settings']['text_processing'])) {
+            unset($cache[$_entity_type][$_bundle][$field_name]);
+          }
+          else {
+            $cache[$_entity_type][$_bundle][$field_name] = $field_name;
+          }
+        }
+      }
+    }
+  }
+  return $cache[$entity_type][$bundle];
 }

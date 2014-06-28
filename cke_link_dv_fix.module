@@ -5,6 +5,9 @@
  *
  * The module fixes the result of ckeditor_link + domain_variants + entitycache
  * combination: when entity is cached with links having domain variant prefix.
+ *
+ * WARNING: the module was tested only with content translation (tnid), not with
+ * entity translation.
  */
 
 /**
@@ -40,7 +43,7 @@ function cke_link_dv_fix_entitycache_load(&$entities, $entity_type) {
     if (variable_get('cke_link_dv_fix_process_all_entity_types') || ($entity_type == 'node')) {
       module_load_include('inc', 'cke_link_dv_fix');
       foreach ($entities as &$entity) {
-        $fields =& _cke_link_dv_fix_find_filtered_text_fields($entity);
+        $fields =& _cke_link_dv_fix_find_filtered_text_fields($entity, $entity_type);
         foreach ($fields as &$field) {
           $filter = filter_list_format($field['format']);
           if (!empty($filter['ckeditor_link_filter']->status)) {
