@@ -48,20 +48,28 @@ function _cke_link_dv_fix_correct_domain_variants_callback($matches) {
   static $init, $correct_prefix, $prefix_to_len_map;
   if ($init === NULL) {
     $init = 'done';
-    $correct_prefix = '//' . $GLOBALS['_domain_variant']->path . '/';
+    // @todo (alex): it's okay only for FC, the logic should be updated for
+    // other projects.
+    $correct_prefix = empty($GLOBALS['_domain_variant']->path)
+        ? $GLOBALS['base_path']
+        : '//' . $GLOBALS['_domain_variant']->path . '/';
     $prefixes = db_select('domain_variants', 'dv')
       ->fields('dv', array('path'))
       ->execute()
       ->fetchCol();
     $prefix_to_len_map = array();
     foreach ($prefixes as $prefix) {
-      $prefix_to_len_map['//' . $prefix . '/'] = strlen($prefix) + 3;
+      foreach (array('http://', 'https://') as $protocol) {
+        $_prefix = $protocol . $prefix . '/';
+        $prefix_to_len_map[$_prefix] = strlen($_prefix);
+      }
     }
+    // Base path should be the last one.
+    $prefix_to_len_map[$GLOBALS['base_path']] = strlen($GLOBALS['base_path']);
   }
   foreach ($prefix_to_len_map as $prefix => $len) {
-    $pos = strpos($matches[1], $prefix);
-    if ($pos !== FALSE) {
-      $correct = substr_replace($matches[1], $correct_prefix, $pos, $len);
+    if (strpos($matches[1], $prefix) === 0) {
+      $correct = substr_replace($matches[1], $correct_prefix, 0, $len);
       return 'href="' . $correct;
     }
   }
