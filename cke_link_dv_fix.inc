@@ -3,7 +3,7 @@
 /**
  * A replacement for _ckeditor_link_filter_process().
  *
- * The only difference: it adds setcurrentdomainvariant="true" before the href.
+ * The only difference: it adds data-setcurrentdomainvariant="true" before the href.
  *
  * @see _ckeditor_link_filter_process()
  */
@@ -22,7 +22,7 @@ function _cke_link_dv_fix_ckeditor_link_filter_process($matches, $langcode = NUL
     if (function_exists($func)) {
       $url = $func($path, $langcode);
       if ($url) {
-        return 'setcurrentdomainvariant="true" href="'. $url;
+        return 'data-setcurrentdomainvariant="true" href="'. $url;
       }
     }
   }
@@ -36,8 +36,8 @@ function _cke_link_dv_fix_ckeditor_link_filter_process($matches, $langcode = NUL
  */
 function _cke_link_dv_fix_correct_domain_variants(&$text) {
   // Use strpos() to avoid excessive regex calls.
-  if (strpos($text, 'setcurrentdomainvariant="true" href="') !== FALSE) {
-    $text = preg_replace_callback('`setcurrentdomainvariant="true" href="([^?#"]+)`', '_cke_link_dv_fix_correct_domain_variants_callback', $text);
+  if (strpos($text, 'data-setcurrentdomainvariant="true" href="') !== FALSE) {
+    $text = preg_replace_callback('`data-setcurrentdomainvariant="true" href="([^?#"]+)`', '_cke_link_dv_fix_correct_domain_variants_callback', $text);
   }
 }
 
